@@ -6,6 +6,15 @@ const { verifyConnectivity } = require("./config/db");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://wexa-ai-startup-ecosystem-graph.vercel.app/",
+    ],
+  }),
+);
+
 app.use(cors());
 app.use(express.json());
 

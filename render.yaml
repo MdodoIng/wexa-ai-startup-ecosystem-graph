@@ -1,17 +1,16 @@
 services:
   - type: web
-    name: startup-ecosystem-api
-    env: node
+    name: wexa-ai-startup-ecosystem-api
+    runtime: node
+    region: oregon
     buildCommand: cd backend && npm install
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: COGNODB_URI
-        sync: false # Set manually in Render dashboard
+        sync: false
       - key: COGNODB_PASSWORD
-        sync: false # Set manually in Render dashboard
+        sync: false
       - key: COGNODB_USER
         value: cognodb
-      - key: PORT
-        value: 10000
