@@ -1,0 +1,14 @@
+{
+  "name": "wexa-cognodb-app",
+  "version": "1.0.0",
+  "description": "Startup Ecosystem & Investment Network - Graph Database Application",
+  "scripts": {
+    "install:all": "cd backend && bun install && cd ../frontend && bun install",
+    "dev": "concurrently \"cd backend && bun run dev\" \"cd frontend && bun start\"",
+    "build": "cd frontend && bun run build",
+    "seed": "cd backend && bun run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
