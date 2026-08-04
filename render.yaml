@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: startup-ecosystem-api
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COGNODB_URI
+        sync: false # Set manually in Render dashboard
+      - key: COGNODB_PASSWORD
+        sync: false # Set manually in Render dashboard
+      - key: COGNODB_USER
+        value: cognodb
+      - key: PORT
+        value: 10000
