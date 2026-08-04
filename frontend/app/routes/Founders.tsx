@@ -10,16 +10,21 @@ export default function Founders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => { fetchFounders(); }, []);
+  useEffect(() => {
+    fetchFounders();
+  }, []);
 
   const fetchFounders = () => {
     setLoading(true);
     let url = `${API_URL}/api/founders`;
     if (search) url += `?search=${encodeURIComponent(search)}`;
-    fetch(url).then(r => r.json()).then(data => {
-      setFounders(data.founders || []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        setFounders(data.founders || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
 
   if (loading) return <LoadingState message="Loading founders..." />;
@@ -28,16 +33,37 @@ export default function Founders() {
     <div className="page">
       <div className="page-header">
         <h1>Founders</h1>
-        <Link to="/founders/new" className="btn btn-primary"><Plus size={18} /> Add Founder</Link>
+        <Link to="/founders/new" className="btn btn-primary">
+          <Plus size={18} /> Add Founder
+        </Link>
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); fetchFounders(); }} className="search-form">
-        <input type="text" placeholder="Search founders..." value={search} onChange={e => setSearch(e.target.value)} />
-        <button type="submit"><Search size={18} /></button>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          fetchFounders();
+        }}
+        className="search-form"
+      >
+        <input
+          type="text"
+          placeholder="Search founders..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <button type="submit">
+          <Search size={18} />
+        </button>
       </form>
-      {founders.length === 0 ? <EmptyState message="No founders found" /> : (
+      {founders.length === 0 ? (
+        <EmptyState message="No founders found" />
+      ) : (
         <div className="card-grid">
           {founders.map((f: any) => (
-            <Link key={f.id} to={`/founders/${f.id}`} className="card founder-card">
+            <Link
+              key={f.id}
+              to={`/founders/${f.id}`}
+              className="card founder-card"
+            >
               <div className="card-header">
                 <UserCircle size={40} className="founder-icon" />
                 <div className="card-title-group">
@@ -47,7 +73,13 @@ export default function Founders() {
               </div>
               <p className="card-description">{f.background}</p>
               {f.companies?.length > 0 && (
-                <div className="tag-group">{f.companies.map((c: any) => <span key={c.id} className="tag">{c.name}</span>)}</div>
+                <div className="tag-group">
+                  {f.companies.map((c: any) => (
+                    <span key={c.id} className="tag">
+                      {c.name}
+                    </span>
+                  ))}
+                </div>
               )}
             </Link>
           ))}

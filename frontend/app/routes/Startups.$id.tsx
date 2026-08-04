@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { LoadingState } from "../components/LoadingState";
-import { ArrowLeft, TrendingUp, Users, MapPin, Calendar, Globe, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingUp,
+  Users,
+  MapPin,
+  Calendar,
+  Globe,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -24,7 +33,9 @@ export default function StartupDetail() {
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this startup?")) return;
-    const res = await fetch(`${API_URL}/api/startups/${id}`, { method: "DELETE" });
+    const res = await fetch(`${API_URL}/api/startups/${id}`, {
+      method: "DELETE",
+    });
     if (res.ok) {
       navigate("/startups");
     } else {
@@ -44,10 +55,15 @@ export default function StartupDetail() {
 
   return (
     <div className="page detail-page">
-      <Link to="/startups" className="back-link"><ArrowLeft size={18} /> Back to Startups</Link>
-      
+      <Link to="/startups" className="back-link">
+        <ArrowLeft size={18} /> Back to Startups
+      </Link>
+
       <div className="detail-header">
-        <div className="logo large" style={{ background: `hsl(${id!.charCodeAt(1) * 30}, 70%, 45%)` }}>
+        <div
+          className="logo large"
+          style={{ background: `hsl(${id!.charCodeAt(1) * 30}, 70%, 45%)` }}
+        >
           {startup.logo}
         </div>
         <div className="detail-title">
@@ -67,17 +83,37 @@ export default function StartupDetail() {
       <p className="detail-description">{startup.description}</p>
 
       <div className="detail-meta-grid">
-        <div className="meta-card"><TrendingUp size={20} /><span className="meta-label">Valuation</span><span className="meta-value">{formatMoney(startup.valuation)}</span></div>
-        <div className="meta-card"><Users size={20} /><span className="meta-label">Employees</span><span className="meta-value">{startup.employees}</span></div>
-        <div className="meta-card"><MapPin size={20} /><span className="meta-label">Location</span><span className="meta-value">{startup.headquarters}</span></div>
-        <div className="meta-card"><Calendar size={20} /><span className="meta-label">Founded</span><span className="meta-value">{startup.founded}</span></div>
+        <div className="meta-card">
+          <TrendingUp size={20} />
+          <span className="meta-label">Valuation</span>
+          <span className="meta-value">{formatMoney(startup.valuation)}</span>
+        </div>
+        <div className="meta-card">
+          <Users size={20} />
+          <span className="meta-label">Employees</span>
+          <span className="meta-value">{startup.employees}</span>
+        </div>
+        <div className="meta-card">
+          <MapPin size={20} />
+          <span className="meta-label">Location</span>
+          <span className="meta-value">{startup.headquarters}</span>
+        </div>
+        <div className="meta-card">
+          <Calendar size={20} />
+          <span className="meta-label">Founded</span>
+          <span className="meta-value">{startup.founded}</span>
+        </div>
       </div>
 
       {startup.markets?.length > 0 && (
         <section className="detail-section">
           <h2>Markets</h2>
           <div className="tag-group">
-            {startup.markets.map((m: string) => <span key={m} className="tag tag-large">{m}</span>)}
+            {startup.markets.map((m: string) => (
+              <span key={m} className="tag tag-large">
+                {m}
+              </span>
+            ))}
           </div>
         </section>
       )}
@@ -101,16 +137,24 @@ export default function StartupDetail() {
         <section className="detail-section">
           <h2>Funding History</h2>
           <div className="timeline">
-            {[...startup.fundingRounds].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((r: any) => (
-              <div key={r.id} className="timeline-item">
-                <div className="timeline-dot" />
-                <div className="timeline-content">
-                  <h4>{r.type}</h4>
-                  <p>{formatMoney(r.amount)} at {formatMoney(r.valuation)} valuation</p>
-                  <span className="timeline-date">{r.date}</span>
+            {[...startup.fundingRounds]
+              .sort(
+                (a: any, b: any) =>
+                  new Date(a.date).getTime() - new Date(b.date).getTime(),
+              )
+              .map((r: any) => (
+                <div key={r.id} className="timeline-item">
+                  <div className="timeline-dot" />
+                  <div className="timeline-content">
+                    <h4>{r.type}</h4>
+                    <p>
+                      {formatMoney(r.amount)} at {formatMoney(r.valuation)}{" "}
+                      valuation
+                    </p>
+                    <span className="timeline-date">{r.date}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </section>
       )}

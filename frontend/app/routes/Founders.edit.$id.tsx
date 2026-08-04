@@ -13,10 +13,12 @@ export default function FounderEdit() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/founders/${id}`).then(r => r.json()).then(data => {
-      setForm(data);
-      setLoading(false);
-    });
+    fetch(`${API_URL}/api/founders/${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setForm(data);
+        setLoading(false);
+      });
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +27,7 @@ export default function FounderEdit() {
     const res = await fetch(`${API_URL}/api/founders/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
+      body: JSON.stringify(form),
     });
     setSaving(false);
     if (res.ok) navigate(`/founders/${id}`);
@@ -37,21 +39,59 @@ export default function FounderEdit() {
 
   return (
     <div className="page form-page">
-      <Link to={`/founders/${id}`} className="back-link"><ArrowLeft size={18} /> Back</Link>
+      <Link to={`/founders/${id}`} className="back-link">
+        <ArrowLeft size={18} /> Back
+      </Link>
       <h1>Edit Founder</h1>
       <form onSubmit={handleSubmit} className="form">
-        <label>Name<input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></label>
-        <label>Role
-          <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-            <option>CEO</option><option>CTO</option><option>COO</option><option>CFO</option>
+        <label>
+          Name
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </label>
+        <label>
+          Role
+          <select
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+          >
+            <option>CEO</option>
+            <option>CTO</option>
+            <option>COO</option>
+            <option>CFO</option>
           </select>
         </label>
-        <label>Background<textarea required value={form.background} onChange={e => setForm({...form, background: e.target.value})} /></label>
+        <label>
+          Background
+          <textarea
+            required
+            value={form.background}
+            onChange={(e) => setForm({ ...form, background: e.target.value })}
+          />
+        </label>
         <div className="form-row">
-          <label>LinkedIn<input value={form.linkedin} onChange={e => setForm({...form, linkedin: e.target.value})} /></label>
-          <label>Email<input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></label>
+          <label>
+            LinkedIn
+            <input
+              value={form.linkedin}
+              onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
+            />
+          </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </label>
         </div>
-        <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</button>
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
       </form>
     </div>
   );

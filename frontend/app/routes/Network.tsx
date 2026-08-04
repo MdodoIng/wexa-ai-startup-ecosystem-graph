@@ -40,7 +40,9 @@ export default function Network() {
   const [highlightLinks, setHighlightLinks] = useState<Set<any>>(new Set());
 
   useEffect(() => {
-    import("react-force-graph-3d").then((mod) => setForceGraph3D(() => mod.default));
+    import("react-force-graph-3d").then((mod) =>
+      setForceGraph3D(() => mod.default),
+    );
   }, []);
 
   useEffect(() => {
@@ -76,10 +78,14 @@ export default function Network() {
   // NEW: precompute neighbor map once per dataset so click handling is O(1)-ish
   const neighborMap = useMemo(() => {
     const map = new Map<number, { nodes: Set<number>; links: Set<any> }>();
-    data.nodes.forEach((n: any) => map.set(n.id, { nodes: new Set(), links: new Set() }));
+    data.nodes.forEach((n: any) =>
+      map.set(n.id, { nodes: new Set(), links: new Set() }),
+    );
     data.links.forEach((link: any) => {
-      const sourceId = typeof link.source === "object" ? link.source.id : link.source;
-      const targetId = typeof link.target === "object" ? link.target.id : link.target;
+      const sourceId =
+        typeof link.source === "object" ? link.source.id : link.source;
+      const targetId =
+        typeof link.target === "object" ? link.target.id : link.target;
       map.get(sourceId)?.nodes.add(targetId);
       map.get(sourceId)?.links.add(link);
       map.get(targetId)?.nodes.add(sourceId);
@@ -102,7 +108,7 @@ export default function Network() {
       setHighlightNodes(nodeSet);
       setHighlightLinks(linkSet);
     },
-    [neighborMap]
+    [neighborMap],
   );
 
   const nodeThreeObject = useCallback((node: any) => {
@@ -113,7 +119,8 @@ export default function Network() {
     return sprite;
   }, []);
 
-  if (loading) return <LoadingState message="Loading network visualization..." />;
+  if (loading)
+    return <LoadingState message="Loading network visualization..." />;
 
   const hasHighlight = highlightNodes.size > 0;
 
@@ -145,7 +152,11 @@ export default function Network() {
         ))}
       </div>
 
-      <div ref={containerRef} className="network-svg" style={{ width: "100%", height: 600 }}>
+      <div
+        ref={containerRef}
+        className="network-svg"
+        style={{ width: "100%", height: 600 }}
+      >
         <ForceGraph3D
           ref={fgRef}
           width={dims.width}
@@ -154,7 +165,9 @@ export default function Network() {
           nodeLabel={(n: any) => n.name || n.label}
           nodeColor={(n: any) => {
             if (!hasHighlight) return COLOR_MAP[n.label] || "#64748b";
-            return highlightNodes.has(n.id) ? COLOR_MAP[n.label] || "#64748b" : DIM_COLOR;
+            return highlightNodes.has(n.id)
+              ? COLOR_MAP[n.label] || "#64748b"
+              : DIM_COLOR;
           }}
           nodeOpacity={hasHighlight ? 0.95 : 0.9}
           nodeVal={(n: any) => NODE_SIZE[n.label] || 5}
@@ -179,9 +192,13 @@ export default function Network() {
             const distance = 120;
             const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
             fgRef.current.cameraPosition(
-              { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+              {
+                x: node.x * distRatio,
+                y: node.y * distRatio,
+                z: node.z * distRatio,
+              },
               node,
-              800
+              800,
             );
           }}
           onBackgroundClick={clearHighlight}
@@ -195,7 +212,8 @@ export default function Network() {
           {selectedNode.stage && <p>Stage: {selectedNode.stage}</p>}
           {selectedNode.focus && <p>Focus: {selectedNode.focus}</p>}
           <p className="connected-count">
-            {highlightNodes.size - 1} connected node{highlightNodes.size - 1 === 1 ? "" : "s"}
+            {highlightNodes.size - 1} connected node
+            {highlightNodes.size - 1 === 1 ? "" : "s"}
           </p>
         </div>
       )}

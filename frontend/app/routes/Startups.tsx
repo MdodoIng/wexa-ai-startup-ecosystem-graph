@@ -15,7 +15,12 @@ function StartupCard({ startup }: { startup: any }) {
   return (
     <Link to={`/startups/${startup.id}`} className="card startup-card">
       <div className="card-header">
-        <div className="logo" style={{ background: `hsl(${startup.id.charCodeAt(1) * 30}, 70%, 45%)` }}>
+        <div
+          className="logo"
+          style={{
+            background: `hsl(${startup.id.charCodeAt(1) * 30}, 70%, 45%)`,
+          }}
+        >
           {startup.logo}
         </div>
         <div className="card-title-group">
@@ -25,14 +30,25 @@ function StartupCard({ startup }: { startup: any }) {
       </div>
       <p className="card-description">{startup.description}</p>
       <div className="card-meta">
-        <span className="meta-item"><TrendingUp size={14} />{formatValuation(startup.valuation)}</span>
-        <span className="meta-item"><Users size={14} />{startup.employees}</span>
-        <span className="meta-item"><MapPin size={14} />{startup.headquarters?.split(",")[0]}</span>
+        <span className="meta-item">
+          <TrendingUp size={14} />
+          {formatValuation(startup.valuation)}
+        </span>
+        <span className="meta-item">
+          <Users size={14} />
+          {startup.employees}
+        </span>
+        <span className="meta-item">
+          <MapPin size={14} />
+          {startup.headquarters?.split(",")[0]}
+        </span>
       </div>
       {startup.markets && startup.markets.length > 0 && (
         <div className="tag-group">
           {startup.markets.slice(0, 3).map((m: string) => (
-            <span key={m} className="tag">{m}</span>
+            <span key={m} className="tag">
+              {m}
+            </span>
           ))}
         </div>
       )}
@@ -55,7 +71,7 @@ export default function Startups() {
     let url = `${API_URL}/api/startups?`;
     if (stage) url += `stage=${encodeURIComponent(stage)}&`;
     if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}`;
-    
+
     fetch(url)
       .then((r) => r.json())
       .then((data) => {
@@ -80,11 +96,18 @@ export default function Startups() {
           <Plus size={18} /> Add Startup
         </Link>
       </div>
-      
+
       <div className="filters">
         <form onSubmit={handleSearch} className="search-form">
-          <input type="text" placeholder="Search startups..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <button type="submit"><Search size={18} /></button>
+          <input
+            type="text"
+            placeholder="Search startups..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button type="submit">
+            <Search size={18} />
+          </button>
         </form>
         <div className="filter-group">
           <Filter size={16} />
@@ -103,7 +126,9 @@ export default function Startups() {
         <EmptyState message="No startups found matching your criteria" />
       ) : (
         <div className="card-grid">
-          {startups.map((s: any) => <StartupCard key={s.id} startup={s} />)}
+          {startups.map((s: any) => (
+            <StartupCard key={s.id} startup={s} />
+          ))}
         </div>
       )}
     </div>
