@@ -1,14 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const { getSession } = require("../config/db");
+const { nodeProps, toNative } = require("../utils/neo4jHelpers");
 
 // Get all startups
 router.get("/", async (req, res, next) => {
   const session = getSession();
   try {
     const { stage, market, minValuation, search } = req.query;
-    let whereConditions = [];
-    let params = {};
+    const whereConditions = [];
+    const params = {};
 
     if (stage) {
       whereConditions.push("s.stage = $stage");
@@ -16,11 +17,11 @@ router.get("/", async (req, res, next) => {
     }
     if (minValuation) {
       whereConditions.push("s.valuation >= $minValuation");
-      params.minValuation = parseInt(minValuation);
+      params.minValuation = parseInt(minValuation, 10);
     }
     if (search) {
       whereConditions.push(
-        "(s.name CONTAINS $search OR s.description CONTAINS $search)",
+        "(toLower(s.name) CONTAINS toLower($search) OR toLower(s.description) CONTAINS toLower($search))",
       );
       params.search = search;
     }
@@ -33,29 +34,25 @@ router.get("/", async (req, res, next) => {
 
     const result = await session.run(query, params);
 
-    // Fetch related data for each startup separately
     const startups = [];
     for (const record of result.records) {
-      const s = record.get("s").properties;
+      const s = nodeProps(record.get("s"));
 
-      // Get markets
       const marketsRes = await session.run(
         "MATCH (s:Startup {id: $id})-[:OPERATES_IN]->(m:Market) RETURN m.name as name",
         { id: s.id },
       );
       const markets = marketsRes.records.map((r) => r.get("name"));
 
-      // Get total raised
       const raisedRes = await session.run(
         "MATCH (s:Startup {id: $id})-[:RAISED]->(r:FundingRound) RETURN r.amount as amount",
         { id: s.id },
       );
       const totalRaised = raisedRes.records.reduce(
-        (sum, r) => sum + (r.get("amount") || 0),
+        (sum, r) => sum + (toNative(r.get("amount")) || 0),
         0,
       );
 
-      // Get founders
       const foundersRes = await session.run(
         "MATCH (f:Founder)-[:FOUNDED]->(s:Startup {id: $id}) RETURN f.name as name, f.role as role",
         { id: s.id },
@@ -93,46 +90,41 @@ router.get("/:id", async (req, res, next) => {
       return res.status(404).json({ error: "Startup not found" });
     }
 
-    const s = result.records[0].get("s").properties;
+    const s = nodeProps(result.records[0].get("s"));
 
-    // Get markets
     const marketsRes = await session.run(
       "MATCH (s:Startup {id: $id})-[:OPERATES_IN]->(m:Market) RETURN m.name as name",
       { id: req.params.id },
     );
     const markets = marketsRes.records.map((r) => r.get("name"));
 
-    // Get funding rounds
     const roundsRes = await session.run(
       "MATCH (s:Startup {id: $id})-[:RAISED]->(r:FundingRound) RETURN r ORDER BY r.date",
       { id: req.params.id },
     );
-    const fundingRounds = roundsRes.records.map((r) => r.get("r").properties);
+    const fundingRounds = roundsRes.records.map((r) => nodeProps(r.get("r")));
 
-    // Get investors
     const investorsRes = await session.run(
       "MATCH (s:Startup {id: $id})-[:RAISED]->(:FundingRound)<-[:INVESTED_IN]-(i:Investor) RETURN DISTINCT i",
       { id: req.params.id },
     );
     const investors = investorsRes.records.map((r) => {
-      const p = r.get("i").properties;
+      const p = nodeProps(r.get("i"));
       return { id: p.id, name: p.name, type: p.type, logo: p.logo };
     });
 
-    // Get founders
     const foundersRes = await session.run(
       "MATCH (f:Founder)-[:FOUNDED]->(s:Startup {id: $id}) RETURN f",
       { id: req.params.id },
     );
-    const founders = foundersRes.records.map((r) => r.get("f").properties);
+    const founders = foundersRes.records.map((r) => nodeProps(r.get("f")));
 
-    // Get competitors
     const competitorsRes = await session.run(
-      "MATCH (s:Startup {id: $id})-[:COMPETES_WITH]->(c:Startup) RETURN c",
+      "MATCH (s:Startup {id: $id})-[:COMPETES_WITH]-(c:Startup) RETURN c",
       { id: req.params.id },
     );
     const competitors = competitorsRes.records.map((r) => {
-      const p = r.get("c").properties;
+      const p = nodeProps(r.get("c"));
       return { id: p.id, name: p.name, logo: p.logo };
     });
 
@@ -169,6 +161,19 @@ router.post("/", async (req, res, next) => {
       markets,
     } = req.body;
 
+    if (!id || !name) {
+      return res.status(400).json({ error: "id and name are required" });
+    }
+
+    const existing = await session.run("MATCH (s:Startup {id: $id}) RETURN s", {
+      id,
+    });
+    if (existing.records.length > 0) {
+      return res
+        .status(409)
+        .json({ error: "Startup with this id already exists" });
+    }
+
     await session.run(
       `CREATE (s:Startup {
         id: $id, name: $name, description: $description, stage: $stage,
@@ -176,26 +181,25 @@ router.post("/", async (req, res, next) => {
         headquarters: $headquarters, website: $website, logo: $logo
       })`,
       {
-        id,
-        name,
-        description,
-        stage,
-        valuation: parseInt(valuation),
-        employees: parseInt(employees),
-        founded,
-        headquarters,
-        website,
-        logo,
+        id: String(id),
+        name: String(name),
+        description: description || "",
+        stage: stage || "Seed",
+        valuation: parseInt(valuation, 10) || 0,
+        employees: parseInt(employees, 10) || 0,
+        founded: parseInt(founded, 10) || new Date().getFullYear(),
+        headquarters: headquarters || "",
+        website: website || "",
+        logo: (logo || "").toUpperCase().slice(0, 4),
       },
     );
 
-    // Link markets
-    if (markets && markets.length > 0) {
+    if (markets && Array.isArray(markets) && markets.length > 0) {
       for (const marketName of markets) {
         await session.run(
           `MATCH (s:Startup {id: $id}), (m:Market {name: $name})
            CREATE (s)-[:OPERATES_IN]->(m)`,
-          { id, name: marketName },
+          { id: String(id), name: marketName },
         );
       }
     }
@@ -224,26 +228,34 @@ router.put("/:id", async (req, res, next) => {
       logo,
     } = req.body;
 
-    await session.run(
+    const result = await session.run(
       `MATCH (s:Startup {id: $id})
        SET s.name = $name, s.description = $description, s.stage = $stage,
            s.valuation = $valuation, s.employees = $employees, s.founded = $founded,
-           s.headquarters = $headquarters, s.website = $website, s.logo = $logo`,
+           s.headquarters = $headquarters, s.website = $website, s.logo = $logo
+       RETURN s`,
       {
         id: req.params.id,
         name,
-        description,
+        description: description || "",
         stage,
-        valuation: parseInt(valuation),
-        employees: parseInt(employees),
-        founded,
-        headquarters,
-        website,
-        logo,
+        valuation: parseInt(valuation, 10) || 0,
+        employees: parseInt(employees, 10) || 0,
+        founded: parseInt(founded, 10) || 0,
+        headquarters: headquarters || "",
+        website: website || "",
+        logo: (logo || "").toUpperCase().slice(0, 4),
       },
     );
 
-    res.json({ message: "Startup updated" });
+    if (result.records.length === 0) {
+      return res.status(404).json({ error: "Startup not found" });
+    }
+
+    res.json({
+      message: "Startup updated",
+      startup: nodeProps(result.records[0].get("s")),
+    });
   } catch (err) {
     next(err);
   } finally {
@@ -255,9 +267,14 @@ router.put("/:id", async (req, res, next) => {
 router.delete("/:id", async (req, res, next) => {
   const session = getSession();
   try {
-    await session.run("MATCH (s:Startup {id: $id}) DETACH DELETE s", {
-      id: req.params.id,
-    });
+    const result = await session.run(
+      "MATCH (s:Startup {id: $id}) DETACH DELETE s RETURN count(*) as deleted",
+      { id: req.params.id },
+    );
+    const deleted = toNative(result.records[0]?.get("deleted")) || 0;
+    if (!deleted) {
+      return res.status(404).json({ error: "Startup not found" });
+    }
     res.json({ message: "Startup deleted" });
   } catch (err) {
     next(err);

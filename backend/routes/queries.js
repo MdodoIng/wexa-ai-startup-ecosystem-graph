@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { getSession } = require("../config/db");
+const { toNative } = require("../utils/neo4jHelpers");
 
-// Helper to get unique array
 const unique = (arr, key) => {
   const seen = new Set();
   return arr.filter((item) => {
@@ -23,7 +23,6 @@ router.get("/investor-market-exposure", async (req, res, next) => {
        RETURN i.name as investor, i.type as type, s.name as company, s.id as sid`,
     );
 
-    // Aggregate in JS
     const grouped = {};
     for (const record of result.records) {
       const name = record.get("investor");
@@ -43,6 +42,7 @@ router.get("/investor-market-exposure", async (req, res, next) => {
       .map((g) => ({
         ...g,
         aiCompanies: [...new Set(g.aiCompanies)],
+        aiPortfolioCount: [...new Set(g.aiCompanies)].length,
       }))
       .sort((a, b) => b.aiPortfolioCount - a.aiPortfolioCount);
 
@@ -97,10 +97,10 @@ router.get("/founder-advisor-conflicts", async (req, res, next) => {
 router.get("/warm-introductions", async (req, res, next) => {
   const session = getSession();
   try {
-    // Simple path query without shortestPath (may not be supported)
+    // Fixed: bind path variable; use variable-length path correctly
     const result = await session.run(
-      `MATCH (i:Investor {name: 'Sequoia Capital'})-[:CO_INVESTOR|INVESTED_IN*1..3]-(target:Startup {name: 'DataPulse'})
-       RETURN [node in nodes(path) | node.name] as pathNames,
+      `MATCH path = (i:Investor {name: 'Sequoia Capital'})-[:CO_INVESTOR|INVESTED_IN*1..3]-(target:Startup {name: 'DataPulse'})
+       RETURN [node in nodes(path) | coalesce(node.name, node.id)] as pathNames,
               [rel in relationships(path) | type(rel)] as pathTypes,
               length(path) as hops
        LIMIT 5`,
@@ -109,14 +109,42 @@ router.get("/warm-introductions", async (req, res, next) => {
     const data = result.records.map((r) => ({
       path: r.get("pathNames"),
       relationshipTypes: r.get("pathTypes"),
-      hops: Number(r.get("hops")),
+      hops: toNative(r.get("hops")),
     }));
+
+    // Fallback: if no path via mixed types, try investment-only hops through rounds
+    if (data.length === 0) {
+      const fallback = await session.run(
+        `MATCH (i:Investor {name: 'Sequoia Capital'})-[:INVESTED_IN]->(r:FundingRound)<-[:RAISED]-(s:Startup)
+         MATCH (s)-[:RAISED]->(:FundingRound)<-[:INVESTED_IN]-(other:Investor)-[:INVESTED_IN]->(:FundingRound)<-[:RAISED]-(target:Startup {name: 'DataPulse'})
+         WHERE other <> i
+         RETURN i.name as from, s.name as viaStartup, other.name as viaInvestor, target.name as to
+         LIMIT 5`,
+      );
+      const fallbackData = fallback.records.map((r) => ({
+        path: [
+          r.get("from"),
+          r.get("viaStartup"),
+          r.get("viaInvestor"),
+          r.get("to"),
+        ],
+        relationshipTypes: ["INVESTED_IN", "RAISED", "INVESTED_IN", "RAISED"],
+        hops: 4,
+      }));
+      return res.json({
+        query: "Warm introduction paths",
+        description:
+          "Finds paths for warm introductions between investors and startups",
+        cypher: `MATCH path = (i:Investor)-[:CO_INVESTOR|INVESTED_IN*1..3]-(target:Startup)`,
+        result: fallbackData,
+      });
+    }
 
     res.json({
       query: "Warm introduction paths",
       description:
         "Finds paths for warm introductions between investors and startups",
-      cypher: `MATCH (i:Investor)-[:CO_INVESTOR|INVESTED_IN*1..3]-(target:Startup)`,
+      cypher: `MATCH path = (i:Investor)-[:CO_INVESTOR|INVESTED_IN*1..3]-(target:Startup)`,
       result: data,
     });
   } catch (err) {
@@ -254,6 +282,7 @@ router.get("/competitive-investor-overlap", async (req, res, next) => {
       .map((g) => ({
         ...g,
         sharedInvestors: unique(g.sharedInvestors, "name"),
+        investorOverlap: unique(g.sharedInvestors, "name").length,
       }))
       .sort((a, b) => b.investorOverlap - a.investorOverlap);
 
@@ -288,21 +317,26 @@ router.get("/adjacent-markets", async (req, res, next) => {
       if (!grouped[name]) {
         grouped[name] = {
           market: name,
-          growth: record.get("growth"),
+          growth: toNative(record.get("growth")),
           exampleStartups: [],
-          investorCount: 0,
+          investors: new Set(),
         };
       }
       grouped[name].exampleStartups.push(record.get("startup"));
-      grouped[name].investorCount++;
+      grouped[name].investors.add(record.get("investor"));
     }
 
     const data = Object.values(grouped)
-      .map((g) => ({
-        ...g,
-        exampleStartups: [...new Set(g.exampleStartups)].slice(0, 5),
-        startupCount: [...new Set(g.exampleStartups)].length,
-      }))
+      .map((g) => {
+        const uniqueStartups = [...new Set(g.exampleStartups)];
+        return {
+          market: g.market,
+          growth: g.growth,
+          exampleStartups: uniqueStartups.slice(0, 5),
+          startupCount: uniqueStartups.length,
+          investorCount: g.investors.size,
+        };
+      })
       .sort((a, b) => b.startupCount - a.startupCount);
 
     res.json({

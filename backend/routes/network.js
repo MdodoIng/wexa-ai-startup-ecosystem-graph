@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { getSession } = require("../config/db");
+const { nodeProps, toNative } = require("../utils/neo4jHelpers");
 
 // Get full network graph data
 router.get("/graph", async (req, res, next) => {
@@ -45,9 +46,9 @@ router.get("/graph", async (req, res, next) => {
     const relsResult = await session.run(relQuery);
 
     const nodes = nodesResult.records.map((r) => {
-      const props = r.get("properties").properties || {};
+      const props = nodeProps(r.get("properties"));
       return {
-        id: Number(r.get("nodeId")),
+        id: toNative(r.get("nodeId")),
         label: r.get("label"),
         ...props,
       };
@@ -57,10 +58,10 @@ router.get("/graph", async (req, res, next) => {
 
     const links = relsResult.records
       .map((r) => {
-        const props = r.get("properties").properties || {};
+        const props = nodeProps(r.get("properties"));
         return {
-          source: Number(r.get("source")),
-          target: Number(r.get("target")),
+          source: toNative(r.get("source")),
+          target: toNative(r.get("target")),
           type: r.get("type"),
           ...props,
         };
@@ -93,7 +94,7 @@ router.get("/stats", async (req, res, next) => {
     );
 
     const totalFunding = fundingRes.records.reduce(
-      (sum, r) => sum + (r.get("amount") || 0),
+      (sum, r) => sum + (toNative(r.get("amount")) || 0),
       0,
     );
 
@@ -102,11 +103,11 @@ router.get("/stats", async (req, res, next) => {
     );
 
     res.json({
-      startups: Number(startupRes.records[0].get("c")),
-      investors: Number(investorRes.records[0].get("c")),
-      founders: Number(founderRes.records[0].get("c")),
+      startups: toNative(startupRes.records[0].get("c")),
+      investors: toNative(investorRes.records[0].get("c")),
+      founders: toNative(founderRes.records[0].get("c")),
       totalFunding,
-      totalInvestments: Number(investmentRes.records[0].get("c")),
+      totalInvestments: toNative(investmentRes.records[0].get("c")),
     });
   } catch (err) {
     next(err);

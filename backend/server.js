@@ -12,10 +12,11 @@ app.use(
       "http://localhost:5173",
       "https://wexa-ai-startup-ecosystem-graph.vercel.app",
     ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
-app.use(cors());
 app.use(express.json());
 
 // Health check
@@ -33,6 +34,19 @@ app.use("/api/network", require("./routes/network"));
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
+
+  // Neo4j constraint / uniqueness violations
+  if (
+    err.code === "Neo.ClientError.Schema.ConstraintValidationFailed" ||
+    err.message?.includes("already exists") ||
+    err.message?.includes("Constraint")
+  ) {
+    return res.status(409).json({
+      error: "Conflict",
+      message: "A record with this id already exists",
+    });
+  }
+
   if (err.code === "ServiceUnavailable" || err.message?.includes("database")) {
     return res.status(503).json({
       error: "Database unavailable",
@@ -40,6 +54,7 @@ app.use((err, req, res, next) => {
         "The graph database is temporarily unavailable. Please try again later.",
     });
   }
+
   res.status(500).json({
     error: "Internal server error",
     message:
